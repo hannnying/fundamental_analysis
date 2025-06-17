@@ -46,7 +46,7 @@ class FilingDataLoader:
         """
         for filing in filings:
             if "local_path" not in filing:
-                filing["local_path"] = download_json_filings(filing, extract)
+                filing["local_path"] = download_json_filings(filing, False)
             
         with self.engine.begin() as conn:
             conn.execute(

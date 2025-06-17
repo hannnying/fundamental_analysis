@@ -36,10 +36,10 @@ def download_json_filings(filing, extract):
     cache_folder.mkdir(parents=True, exist_ok=True)
     filename = f"{filing["ticker"]}_{filing["fiscal_year"]}_{filing["form_type"]}.json"
     filepath = cache_folder / filename
+    relative_path = os.path.relpath(filepath, start=BASE_DIR)  # Or omit start= for cwd
 
     if filepath.exists():
          # Convert absolute path to relative path (relative to BASE_DIR or current working dir)
-        relative_path = os.path.relpath(filepath, start=BASE_DIR)  # Or omit start= for cwd
         print(f"{filepath} exists.")
         return relative_path
     
@@ -52,6 +52,7 @@ def download_json_filings(filing, extract):
         with open(filepath, "w") as f:
             json.dump(xbrl_json, f)
         print(f"Saved to {filepath}.")
+        return relative_path
 
     else:
         print(f"{filepath} does not exist. Set `extract=True` to fetch it.")

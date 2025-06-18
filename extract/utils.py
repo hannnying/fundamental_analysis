@@ -1,6 +1,7 @@
 import json
 import os
 from pathlib import Path
+import pandas as pd
 from sec_api import XbrlApi
 from sec_cik_mapper import StockMapper
 from urllib.parse import urlparse
@@ -59,5 +60,26 @@ def download_json_filings(filing, extract):
         return None
 
         
+def load_json_income_statement(xbrl_json, standard_mapping, columns):
+    income_statement_store = {}
 
+    for usGaapItem in xbrl_json["StatementsOfIncome"]:
+        col_name = standard_mapping.get(usGaapItem, usGaapItem)
+        values = []
+        indicies = []
+        if col_name not in columns:
+            continue
 
+        for fact in xbrl_json['StatementsOfIncome'][usGaapItem]:
+            # only consider items without segment. not required for our analysis.
+            if 'segment' not in fact:
+                index = pd.to_datetime(fact['period']['endDate']).year
+                # ensure no index duplicates are created
+                if index not in indicies:
+                    values.append(fact['value'])
+                    indicies.append(index)                    
+
+        income_statement_store[col_name] = pd.Series(values, index=indicies) 
+
+    income_statement = pd.DataFrame(income_statement_store)
+    return income_statement

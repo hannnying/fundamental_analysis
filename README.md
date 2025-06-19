@@ -21,8 +21,9 @@ project/
 ## 🗂 Dependencies
 
 This project primarily uses:
-- cik_to_tickers 
+- pandas 
 - sec_api
+- sec_cik_mapper
 - sqlalchemy
 - yfinance
-- 
+

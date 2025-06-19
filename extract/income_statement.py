@@ -2,7 +2,7 @@ from db_uri import engine
 import json
 from pathlib import Path
 from sqlalchemy import Table, Column, String, Float, MetaData, Integer
-from utils import load_json_income_statement
+from utils import fetch_financial_statement_yf, json_to_table
 import yfinance as yf
 
 class IncomeStatementLoader:
@@ -11,14 +11,16 @@ class IncomeStatementLoader:
         self.metadata = MetaData()
         self.income_statement_table = self._define_table()
         self.columns = ["revenue", "cost_of_revenue", "net_income", "operating_income", "gross_profit"]
-        self.yf_columns = ["TotalRevenue", "CostOfRevenue", "GrossProfit", "OperatingIncome", "NetIncome"]
         self.standard_mappings = {
             "RevenueFromContractWithCustomerExcludingAssessedTax": "revenue",
             "Revenues": "revenue",
             "SalesRevenueNet": "revenue",
+            "TotalRevenue": "revenue", #yf
             "CostOfRevenue": "cost_of_revenue",
             "CostOfGoodsAndServicesSold": "cost_of_revenue",
+            "OperatingIncome": "operating_income", # yf
             "OperatingIncomeLoss": "operating_income",
+            "NetIncome": "net_income", # yf
             "NetIncomeLoss": "net_income",
             "GrossProfit": "gross_profit" # may not always be available
         }
@@ -42,51 +44,6 @@ class IncomeStatementLoader:
     def _create_table(self):
         self.metadata.create_all(self.engine)
 
-    def fetch_income_statement_filing_json(self, ticker, fiscal_year, form_type="10-K"):
-        records = []
-        BASE_DIR = Path(__file__).resolve().parent.parent  # This gives you 'project/'
-        cache_folder = BASE_DIR / "data" / "sec_filings"
-        filename = f"{ticker}_{fiscal_year}_{form_type}.json"
-        filepath = cache_folder / filename
-
-        if filepath.exists():
-            with open(filepath, "r") as f:
-                xbrl_json = json.load(f)
-        else:
-            print(f"{filepath} does not exist.")
-
-        filing_income_statements = load_json_income_statement(xbrl_json, self.standard_mappings, self.columns)
-        records = []
-        for year in filing_income_statements.index:
-            d = {"revenue": False, "cost_of_revenue": False, "operating_income": False, "net_income": False, "gross_profit": False}
-            for key in d:
-                try:
-                    d[key] = float(filing_income_statements.loc[year, key])
-                except Exception as e:
-                    print(f"{e} not in filing")
-            d["fiscal_year"] = year
-            d["ticker"] = ticker
-            d["source"] = "sec_filings_json"
-            records.append(d)
-        return records
-
-    
-    def fetch_company_income_statement_yf(self, ticker):
-        records = []
-        income_stmt_2124 = yf.Ticker(ticker).get_income_stmt().T[self.yf_columns].dropna()
-        for dt in income_stmt_2124.index:
-            revenue, cost_of_revenue, gross_profit, operating_income, net_income = income_stmt_2124.loc[dt,:]
-            d = {'ticker': ticker,
-                'fiscal_year': dt.year,
-                'source': 'yfinance',
-                'revenue': revenue,
-                'cost_of_revenue': cost_of_revenue,
-                'gross_profit': gross_profit,
-                'operating_income': operating_income,
-                'net_income': net_income
-            }
-            records.append(d)
-        return records
 
     def load_income_statement_by_json(self, tickers_fiscal_years):
         """
@@ -95,7 +52,7 @@ class IncomeStatementLoader:
         income_statements = []
         for ticker, fiscal_year in tickers_fiscal_years:
             try:
-                filing_income_statements = self.fetch_income_statement_filing_json(ticker, fiscal_year)
+                filing_income_statements = json_to_table(ticker, "income", fiscal_year, self.standard_mappings, self.columns)
                 income_statements.extend(filing_income_statements)
             except Exception as e:
                 print(f"Error fetching income statements of {ticker}: {e}")
@@ -107,13 +64,12 @@ class IncomeStatementLoader:
                     income_statements
                 )
 
-        
 
     def load_income_statement_by_yf_tickers(self, tickers):
         income_statements = []
         for ticker in tickers:
             try:
-                income_stmt_2124 = self.fetch_company_income_statement_yf(ticker)
+                income_stmt_2124 = fetch_financial_statement_yf(ticker, "income", self.standard_mappings, self.columns)
                 print(f"Fetched 2021-2024 income statements of {ticker}")
                 income_statements.extend(income_stmt_2124)
             except Exception as e:

@@ -13,9 +13,20 @@ conn = sqlite3.connect("fundamentals.db")
 # List tables
 tables = pd.read_sql("SELECT name FROM sqlite_master WHERE type='table';", conn)
 print("Tables:\n", tables)
-# View data
-df = pd.read_sql("SELECT * FROM Filing;", conn)
-df.to_csv("filing.csv", index=False)
+
+# View Filing Table
+# df = pd.read_sql("SELECT * FROM Filing;", conn)
+# df.to_csv("filing.csv", index=False)
+# print(df.head())
+
+# View IncomeStatement Table
+# df = pd.read_sql("SELECT * FROM IncomeStatement;", conn)
+# df.to_csv("income_statement.csv", index=False)
+# print(df.head())
+
+# View BalanceSheet Table
+df = pd.read_sql("SELECT * FROM BalanceSheet;", conn)
+df.to_csv("balance_sheet.csv", index=False)
 print(df.head())
 
 conn.close()

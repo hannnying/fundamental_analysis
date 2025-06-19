@@ -23,5 +23,6 @@ project/
 This project primarily uses:
 - cik_to_tickers 
 - sec_api
+- sqlalchemy
 - yfinance
 - 

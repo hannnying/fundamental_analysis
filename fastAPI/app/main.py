@@ -8,55 +8,43 @@ from fastapi import FastAPI
 
 app = FastAPI()
 
-@app.get("/revenue/{ticker}")
-async def get_ticker_revenue(ticker:str):
+
+@app.get("/company/financial-ratios")
+async def financial_ratios(ticker:str):
+    financial_ratio_query = stock.get_raw_all_ratios(ticker).all()
+    return convert_to_dict(financial_ratio_query)
+
+
+@app.get("/sector/financials")
+async def sector_financials(ticker:str):
+    sector_financials_query = rivals.get_rival_financials(ticker)
+    return convert_to_dict(sector_financials_query)
+
+
+@app.get("/sector/compare")
+async def sector_compare_ratios(ticker:str):
+    sector_ratios_query = rivals.compare_sector_averages(ticker).subquery()
+    stock_ratios_query = stock.get_raw_all_ratios(ticker).subquery()
     results = (
         session.query(
-            IncomeStatement.ticker,
-            IncomeStatement.fiscal_year,
-            IncomeStatement.revenue
-        ).filter(IncomeStatement.ticker==ticker).all()
+            sector_ratios_query.c.fiscal_year,
+            sector_ratios_query.c.basic_eps.label("sector_basic_eps"),
+            stock_ratios_query.c.basic_eps.label(f"{ticker}_basic_eps"),
+            sector_ratios_query.c.profit_margin.label("sector_profit_margin"),
+            stock_ratios_query.c.profit_margin.label(f"{ticker}_profit_margin"),
+            sector_ratios_query.c.operating_margin.label("sector_operating_margin"),
+            stock_ratios_query.c.operating_margin.label(f"{ticker}_operating_margin"),
+            sector_ratios_query.c.current_ratio.label("sector_current_ratio"),
+            stock_ratios_query.c.current_ratio.label(f"{ticker}_current_ratio"),
+            sector_ratios_query.c.debt_to_equity.label("sector_debt_to_equity"),
+            stock_ratios_query.c.debt_to_equity.label(f"{ticker}_debt_to_equity"),
+            sector_ratios_query.c.debt_to_assets.label("sector_debt_to_assets"),
+            stock_ratios_query.c.debt_to_assets.label(f"{ticker}_debt_to_assets")
     )
-
-    return [
-        {
-            "fiscal_year": r.fiscal_year,
-            "revenue": r.revenue,
-            "ticker": r.ticker
-        }
-        for r in results
-    ]
-
-
-@app.get("/financial-ratios/{ticker}")
-async def financial_ratios(ticker:str):
-    financial_ratio_query = stock.get_all_ratios(ticker)
-    return financial_ratio_query
-
-
-
-@app.get("/rival-financials/{ticker}")
-async def rival_financials(ticker:str):
-    rival_financials_query = rivals.get_rival_financials(ticker)
-    return convert_to_dict(rival_financials_query)
-
-
-@app.get("/rival-compare/{ticker}")
-async def rival_eps(ticker:str):
-    ticker_eps = (
-        session.query(
-            IncomeStatement.fiscal_year,
-            IncomeStatement.basic_eps.label('basic_eps')
-        ).filter(IncomeStatement.ticker==ticker).all()
+    .join(stock_ratios_query, sector_ratios_query.c.fiscal_year==stock_ratios_query.c.fiscal_year)
+    .order_by(sector_ratios_query.c.fiscal_year)
+    .all()
     )
-    # for now, compare_rivals only calculates average eps of sector
-    sector_eps = rivals.compare_rivals(ticker).subquery()
-    results = []
-    for q in ticker_eps:
-        result = {
-            "fiscal_year": q.fiscal_year,
-            f"{ticker}_eps": q.basic_eps,
-            f"sector eps": session.query(sector_eps.c.sector_eps).filter(sector_eps.c.fiscal_year==q.fiscal_year).scalar()
-        }
-        results.append(result)
-    return results
+    
+    return convert_to_dict(results)
+

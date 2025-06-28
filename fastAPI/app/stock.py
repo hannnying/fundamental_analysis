@@ -2,6 +2,13 @@
 from app.utils import join_financials
 from internal.database import session
 from internal.models import Company, IncomeStatement, BalanceSheet
+from sqlalchemy import case
+from sqlalchemy.orm import Query
+
+
+def get_raw_ticker_join_financials(ticker):
+    return join_financials().filter(IncomeStatement.ticker==ticker)
+
 
 def get_ticker_join_financials(ticker):
     return (
@@ -9,7 +16,7 @@ def get_ticker_join_financials(ticker):
         .filter(IncomeStatement.ticker==ticker)
         .all()
     )
-    
+   
 
 def calculate_profit_margin(row):
     return row.gross_profit / row.revenue if row.revenue else None
@@ -30,20 +37,35 @@ def calculate_debt_to_assets(row):
     return row.total_liabilites / row.total_assets if row.total_assets else None
 
 
-def get_all_ratios(ticker):
-    rows = get_ticker_join_financials(ticker)
-    results = []
+def get_raw_all_ratios(ticker: str) -> Query:
+    q = get_raw_ticker_join_financials(ticker).subquery()
 
-    for row in rows:
-        metrics = {
-            "ticker": row.ticker,
-            "fiscal_year": row.fiscal_year,
-            "profit_margin": calculate_profit_margin(row),
-            "operating_margin": calculate_operating_margin(row),
-            "eps": calculate_eps(row),
-            "current_ratio": calculate_current_ratio(row),
-            "debt_to_equity": calculate_debt_to_equity(row),
-            "debt_to_assets": calculate_debt_to_assets(row),
-        }
-        results.append(metrics)
-    return results
+    return session.query(
+            q.c.fiscal_year,
+            q.c.basic_eps,
+
+            case(
+                (q.c.revenue != 0, q.c.gross_profit / q.c.revenue),
+                else_=None
+            ).label("profit_margin"),
+
+            case(
+                (q.c.revenue != 0, q.c.operating_income / q.c.revenue),
+                else_=None
+            ).label("operating_margin"),
+
+            case(
+                (q.c.current_liabilities != 0, q.c.current_assets / q.c.current_liabilities),
+                else_=None
+            ).label("current_ratio"),
+
+            case(
+                (q.c.stockholders_equity != 0, q.c.total_liabilites / q.c.stockholders_equity),
+                else_=None
+            ).label("debt_to_equity"),
+
+            case(
+                (q.c.total_assets != 0, q.c.total_liabilites / q.c.total_assets),
+                else_=None
+            ).label("debt_to_assets")
+        )

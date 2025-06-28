@@ -1,7 +1,8 @@
 from app.utils import get_ticker_sector, join_financials
 from internal.database import session
 from internal.models import Company, IncomeStatement, BalanceSheet
-from sqlalchemy import func
+from sqlalchemy import func, case
+from sqlalchemy.orm import Query
 
 def get_raw_rival_financials(ticker: str):
     sector_subquery = get_ticker_sector(ticker)
@@ -23,9 +24,48 @@ def get_rival_financials(ticker: str):
     )
 
 
-def compare_rivals(ticker: str,):
-    rival_financials_query = get_raw_rival_financials(ticker).subquery()
+def compare_sector_averages(ticker: str) -> Query:
+    rival_query = get_raw_rival_financials(ticker).subquery()
+
     return session.query(
-            rival_financials_query.c.fiscal_year,
-            func.avg(rival_financials_query.c.basic_eps).label('sector_eps')
-        ).group_by(rival_financials_query.c.fiscal_year)
+            rival_query.c.fiscal_year,
+            func.avg(
+                case(
+                    (rival_query.c.revenue != 0, rival_query.c.gross_profit / rival_query.c.revenue),
+                    else_=None
+                )
+            ).label("profit_margin"),
+
+            func.avg(
+                case(
+                    (rival_query.c.revenue != 0, rival_query.c.operating_income / rival_query.c.revenue),
+                    else_=None
+                )
+            ).label("operating_margin"),
+
+            func.avg(rival_query.c.basic_eps).label("basic_eps"),
+
+            func.avg(
+                case(
+                    (rival_query.c.current_liabilities != 0,
+                      rival_query.c.current_assets / rival_query.c.current_liabilities),
+                    else_=None
+                )
+            ).label("current_ratio"),
+
+            func.avg(
+                case(
+                    (rival_query.c.stockholders_equity != 0,
+                      rival_query.c.total_liabilites / rival_query.c.stockholders_equity),
+                    else_=None
+                )
+            ).label("debt_to_equity"),
+
+            func.avg(
+                case(
+                    (rival_query.c.total_assets != 0,
+                      rival_query.c.total_liabilites / rival_query.c.total_assets),
+                    else_=None
+                )
+            ).label("debt_to_assets"),
+        ).group_by(rival_query.c.fiscal_year)

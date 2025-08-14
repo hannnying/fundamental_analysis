@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Float, Integer, String, Boolean
 from internal.database import Base, engine
+# from database import Base, engine
 
 class Company(Base):
     __tablename__ = "companies"

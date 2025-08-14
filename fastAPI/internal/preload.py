@@ -3,6 +3,11 @@ from internal.models import BalanceSheet, Company, IncomeStatement
 from internal.utils import ticker_to_cik, stock_tickers
 import yfinance as yf
 
+# from database import session
+# from models import BalanceSheet, Company, IncomeStatement
+# from utils import ticker_to_cik, stock_tickers
+# import yfinance as yf
+
 
 def retrieve_column(statement, filed_date, col_name):
     try:

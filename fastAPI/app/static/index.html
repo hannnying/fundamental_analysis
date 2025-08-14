@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Stock Analysis</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        input, button { padding: 10px; margin: 5px 0; width: 300px; }
+        pre { background: #f4f4f4; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h2>Stock Analysis Dashboard</h2>
+    <input type="text" id="ticker" placeholder="Enter stock ticker" />
+    <button onclick="fetchStockAnalysis()">Get Analysis</button>
+
+    <div id="results"></div>
+
+    <script>
+    console.log("Script loaded");
+
+    async function fetchStockAnalysis(){
+        console.log("🟢 Function called");
+
+        const ticker = document.getElementById("ticker").value.trim().toUpperCase();
+        const resultsDiv = document.getElementById("results");
+
+        if (!ticker){
+            resultsDiv.innerHTML = "Please enter a valid ticker.";
+            return;
+        }
+
+        try {
+            const endpoints = [
+                ["Price Comparison with SPY", `/company/market?ticker=${ticker}`],
+                ["Sector Comparison", `/sector/compare?ticker=${ticker}`],
+                ["Company Financial Ratios", `/company/financial-ratios?ticker=${ticker}`]
+            ];
+
+            let html = "";
+
+            for (const [title, endpoint] of endpoints){
+                try {
+                    const res = await fetch(endpoint);
+
+                    if (!res.ok){
+                        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                    }
+
+                    const data = await res.json();
+                    console.log("✅ Data received:", data);
+
+                    html += `<h3>${title}</h3>`;
+                    html += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                } catch (err) {
+                    console.error(`❌ Error fetching ${endpoint}:`, err);
+                    html += `<h3>${title}</h3>`;
+                    html += `<pre style="color:red;">Error fetching ${endpoint}: ${err.message}</pre>`;
+                }
+            }
+
+            resultsDiv.innerHTML = html;
+
+        } catch (err) {
+            console.error("❌ Outer error:", err);
+            resultsDiv.innerHTML = "Something went wrong. Check the console.";
+        }
+    }
+</script>
+</body>
+</html>

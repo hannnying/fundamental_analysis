@@ -28,44 +28,57 @@ def compare_sector_averages(ticker: str) -> Query:
     rival_query = get_raw_rival_financials(ticker).subquery()
 
     return session.query(
-            rival_query.c.fiscal_year,
-            func.avg(
-                case(
-                    (rival_query.c.revenue != 0, rival_query.c.gross_profit / rival_query.c.revenue),
-                    else_=None
-                )
-            ).label("profit_margin"),
+    rival_query.c.fiscal_year,
 
-            func.avg(
-                case(
-                    (rival_query.c.revenue != 0, rival_query.c.operating_income / rival_query.c.revenue),
-                    else_=None
-                )
-            ).label("operating_margin"),
+    func.round(
+        func.avg(
+            case(
+                (rival_query.c.revenue != 0, rival_query.c.gross_profit / rival_query.c.revenue),
+                else_=None
+            )
+        ), 2
+    ).label("profit_margin"),
 
-            func.avg(rival_query.c.basic_eps).label("basic_eps"),
+    func.round(
+        func.avg(
+            case(
+                (rival_query.c.revenue != 0, rival_query.c.operating_income / rival_query.c.revenue),
+                else_=None
+            )
+        ), 2
+    ).label("operating_margin"),
 
-            func.avg(
-                case(
-                    (rival_query.c.current_liabilities != 0,
-                      rival_query.c.current_assets / rival_query.c.current_liabilities),
-                    else_=None
-                )
-            ).label("current_ratio"),
+    func.round(
+        func.avg(rival_query.c.basic_eps), 2
+    ).label("basic_eps"),
 
-            func.avg(
-                case(
-                    (rival_query.c.stockholders_equity != 0,
-                      rival_query.c.total_liabilites / rival_query.c.stockholders_equity),
-                    else_=None
-                )
-            ).label("debt_to_equity"),
+    func.round(
+        func.avg(
+            case(
+                (rival_query.c.current_liabilities != 0,
+                 rival_query.c.current_assets / rival_query.c.current_liabilities),
+                else_=None
+            )
+        ), 2
+    ).label("current_ratio"),
 
-            func.avg(
-                case(
-                    (rival_query.c.total_assets != 0,
-                      rival_query.c.total_liabilites / rival_query.c.total_assets),
-                    else_=None
-                )
-            ).label("debt_to_assets"),
-        ).group_by(rival_query.c.fiscal_year)
+    func.round(
+        func.avg(
+            case(
+                (rival_query.c.stockholders_equity != 0,
+                 rival_query.c.total_liabilites / rival_query.c.stockholders_equity),
+                else_=None
+            )
+        ), 2
+    ).label("debt_to_equity"),
+
+    func.round(
+        func.avg(
+            case(
+                (rival_query.c.total_assets != 0,
+                 rival_query.c.total_liabilites / rival_query.c.total_assets),
+                else_=None
+            )
+        ), 2
+    ).label("debt_to_assets"),
+).group_by(rival_query.c.fiscal_year)

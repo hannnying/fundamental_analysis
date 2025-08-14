@@ -2,7 +2,7 @@
 from app.utils import join_financials
 from internal.database import session
 from internal.models import Company, IncomeStatement, BalanceSheet
-from sqlalchemy import case
+from sqlalchemy import case, func
 from sqlalchemy.orm import Query
 
 
@@ -45,27 +45,27 @@ def get_raw_all_ratios(ticker: str) -> Query:
             q.c.basic_eps,
 
             case(
-                (q.c.revenue != 0, q.c.gross_profit / q.c.revenue),
+                (q.c.revenue != 0, func.round(q.c.gross_profit / q.c.revenue, 2)),
                 else_=None
             ).label("profit_margin"),
 
             case(
-                (q.c.revenue != 0, q.c.operating_income / q.c.revenue),
+                (q.c.revenue != 0, func.round(q.c.operating_income / q.c.revenue, 2)),
                 else_=None
             ).label("operating_margin"),
 
             case(
-                (q.c.current_liabilities != 0, q.c.current_assets / q.c.current_liabilities),
+                (q.c.current_liabilities != 0, func.round(q.c.current_assets / q.c.current_liabilities, 2)),
                 else_=None
             ).label("current_ratio"),
 
             case(
-                (q.c.stockholders_equity != 0, q.c.total_liabilites / q.c.stockholders_equity),
+                (q.c.stockholders_equity != 0, func.round(q.c.total_liabilites / q.c.stockholders_equity, 2)),
                 else_=None
             ).label("debt_to_equity"),
 
             case(
-                (q.c.total_assets != 0, q.c.total_liabilites / q.c.total_assets),
+                (q.c.total_assets != 0, func.round(q.c.total_liabilites / q.c.total_assets, 2)),
                 else_=None
             ).label("debt_to_assets")
         )

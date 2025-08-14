@@ -31,9 +31,11 @@ def join_financials():
             b.total_liabilites,
             b.current_assets,
             b.stockholders_equity
-        ).join(b, (i.ticker == b.ticker) & (i.fiscal_year == b.fiscal_year))
-        
+        ).join(b, (i.ticker == b.ticker) & (i.fiscal_year == b.fiscal_year)
+        ).filter(i.revenue != None) # exclude year where data isn't available       
 
 
 def get_ticker_sector(ticker:str):
     return session.query(c.sector).filter(c.ticker == ticker).scalar_subquery()
+
+

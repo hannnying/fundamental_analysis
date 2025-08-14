@@ -1,3 +1,6 @@
+
+
+
 ## Ensure You're in the Correct Directory  
 Make sure you're in the `fastAPI` directory before running any scripts. 
 
@@ -14,3 +17,5 @@ To start the application, run
 ```bash
 python -m uvicorn app.main:app --reload
 ```
+
+
